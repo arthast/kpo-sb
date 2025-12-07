@@ -1,0 +1,108 @@
+services:
+  # PostgreSQL для File Storing Service
+  postgres-storage:
+    image: postgres:15-alpine
+    container_name: postgres_storage
+    environment:
+      POSTGRES_DB: antiplagiat_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_storage_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d antiplagiat_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - antiplagiat-network
+
+  # PostgreSQL для File Analysis Service
+  postgres-analysis:
+    image: postgres:15-alpine
+    container_name: postgres_analysis
+    environment:
+      POSTGRES_DB: antiplagiat_analysis_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_analysis_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d antiplagiat_analysis_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - antiplagiat-network
+
+  # File Storing Service
+  file-storing-service:
+    build:
+      context: .
+      dockerfile: file-storing-service/Dockerfile
+    container_name: file_storing_service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-storage:5432/antiplagiat_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      FILE_STORAGE_PATH: /app/uploads
+    volumes:
+      - file_uploads:/app/uploads
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-storage:
+        condition: service_healthy
+    networks:
+      - antiplagiat-network
+
+  # File Analysis Service
+  file-analysis-service:
+    build:
+      context: .
+      dockerfile: file-analysis-service/Dockerfile
+    container_name: file_analysis_service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-analysis:5432/antiplagiat_analysis_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres-analysis:
+        condition: service_healthy
+    networks:
+      - antiplagiat-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: api_gateway
+    environment:
+      FILE_STORAGE_URL: http://file-storing-service:8081
+      FILE_ANALYSIS_URL: http://file-analysis-service:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      - file-storing-service
+      - file-analysis-service
+    networks:
+      - antiplagiat-network
+
+volumes:
+  postgres_storage_data:
+  postgres_analysis_data:
+  file_uploads:
+
+networks:
+  antiplagiat-network:
+    driver: bridge
+
