@@ -31,17 +31,23 @@
 
 ### Микросервисы
 
-1. **API Gateway** (порт 8080)
+1. **Frontend** (порт 3000)
+   - Веб-интерфейс на React
+   - Управление счетами и заказами
+   - Автоматическое обновление статусов
+   - Nginx для проксирования API
+
+2. **API Gateway** (порт 8080)
    - Маршрутизация запросов к микросервисам
    - Единая точка входа для клиентов
 
-2. **Order Service** (порт 8082)
+3. **Order Service** (порт 8082)
    - Создание заказов
    - Просмотр списка заказов
    - Просмотр статуса заказа
    - Реализует **Transactional Outbox** паттерн
 
-3. **Payment Service** (порт 8081)
+4. **Payment Service** (порт 8081)
    - Создание счетов
    - Пополнение счетов
    - Просмотр баланса
@@ -89,9 +95,21 @@ docker-compose up --build
 ### Проверка работоспособности
 
 После запуска доступны:
+- **Frontend (Web UI)**: http://localhost:3000 ⭐ **Основной интерфейс**
 - API Gateway Swagger UI: http://localhost:8080/swagger-ui.html
 - Order Service Swagger UI: http://localhost:8082/swagger-ui.html
 - Payment Service Swagger UI: http://localhost:8081/swagger-ui.html
+
+#### Использование веб-интерфейса
+
+1. Откройте http://localhost:3000 в браузере
+2. Выберите ID пользователя (по умолчанию 1)
+3. Создайте счет, нажав кнопку "Создать счет"
+4. Пополните счет на желаемую сумму
+5. Создайте заказ, указав сумму и описание
+6. Статус заказа автоматически обновится через ~10 секунд
+
+**Автообновление**: Интерфейс автоматически обновляет данные каждые 5 секунд
 
 ## API Endpoints
 
@@ -156,6 +174,18 @@ curl http://localhost:8080/api/accounts/1
 
 ```
 homework/async/
+├── frontend/              # Frontend (React + Nginx)
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── AccountManager.js
+│   │   │   └── OrderManager.js
+│   │   ├── App.js
+│   │   ├── App.css
+│   │   └── index.js
+│   ├── nginx.conf
+│   ├── Dockerfile
+│   └── package.json
 ├── api-gateway/           # API Gateway сервис
 │   ├── src/
 │   ├── build.gradle.kts
@@ -192,6 +222,13 @@ homework/async/
 
 - `payment-requests` - запросы на оплату (Order → Payment)
 - `payment-results` - результаты оплаты (Payment → Order)
+
+### Статус заказа не обновляется
+
+Это нормально! Обработка асинхронная:
+- Подождите 10-15 секунд
+- Страница автоматически обновляется каждые 5 секунд
+- Или обновите вручную
 
 ## Остановка
 

@@ -138,6 +138,19 @@ services:
     networks:
       - gozon-network
 
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - gozon-network
+
 volumes:
   postgres_orders_data:
   postgres_payments_data:
